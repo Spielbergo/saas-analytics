@@ -1,4 +1,5 @@
 import { kvGet, kvSet } from "../adminStore";
+import { normUrl } from "./urlNorm";
 import { recordPageSpeed } from "./history";
 import type { PageSpeedResult } from "./types";
 
@@ -44,7 +45,15 @@ export function parsePageSpeed(url: string, strategy: "mobile" | "desktop", json
 }
 
 export async function getPageSpeedCache(): Promise<PageSpeedResult[]> {
-  return kvGet<PageSpeedResult[]>("seo_pagespeed", []);
+  const rows = await kvGet<PageSpeedResult[]>("seo_pagespeed", []);
+  // One row per page+device: older runs stored "site" and "site/" separately.
+  const byKey = new Map<string, PageSpeedResult>();
+  for (const r of rows) {
+    const k = `${r.strategy}|${normUrl(r.url)}`;
+    const prev = byKey.get(k);
+    if (!prev || r.fetchedAt > prev.fetchedAt) byKey.set(k, { ...r, url: normUrl(r.url) });
+  }
+  return Array.from(byKey.values());
 }
 
 export async function runPageSpeed(
@@ -53,7 +62,7 @@ export async function runPageSpeed(
 ): Promise<PageSpeedResult[]> {
   const key = process.env.PAGESPEED_API_KEY;
   const results: PageSpeedResult[] = [];
-  for (const url of urls.slice(0, 8)) {
+  for (const url of Array.from(new Set(urls.map(normUrl))).slice(0, 8)) {
     const params = new URLSearchParams({ url, strategy });
     for (const c of ["performance", "seo", "accessibility", "best-practices"]) params.append("category", c);
     if (key) params.set("key", key);

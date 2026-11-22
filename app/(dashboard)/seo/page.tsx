@@ -144,6 +144,7 @@ export default function SeoPage() {
           {tab === "speed" && (
             <SpeedPanel
               siteUrl={bundle.siteUrl}
+              crawl={bundle.crawl}
               results={bundle.pagespeed}
               opportunities={bundle.opportunities}
               hasKey={bundle.config.pageSpeedKey}
