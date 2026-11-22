@@ -1,7 +1,7 @@
 "use client";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { SeoBundle } from "@/lib/seo/types";
+import type { InspectionResult, SeoBundle } from "@/lib/seo/types";
 
 /** Authenticated fetch against /api/seo/*. Throws with the server's detail. */
 async function accessToken(forceRefresh = false): Promise<string> {
@@ -49,3 +49,20 @@ export async function seoFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
 export const fetchSeoBundle = (refresh = false) =>
   seoFetch<SeoBundle>(`/api/seo${refresh ? "?refresh=1" : ""}`);
+
+/** Inspect pages in small batches so every request stays inside the host's time limit (Vercel Hobby: 60s). */
+export async function inspectAll(onProgress?: (done: number, total: number) => void): Promise<InspectionResult[]> {
+  let offset = 0;
+  let rows: InspectionResult[] = [];
+  for (let guard = 0; guard < 30; guard++) {
+    const r = await seoFetch<{ inspections: InspectionResult[]; next: number | null; total: number }>("/api/seo/inspect", {
+      method: "POST",
+      body: JSON.stringify({ offset, limit: 6 }),
+    });
+    rows = r.inspections;
+    onProgress?.(r.next ?? r.total, r.total);
+    if (r.next === null) break;
+    offset = r.next;
+  }
+  return rows;
+}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { DataTable } from "@/components/DataTable";
-import { seoFetch } from "@/lib/seoClient";
+import { inspectAll, seoFetch } from "@/lib/seoClient";
 import type { CrawlResult, InspectionResult, SchemaReport } from "@/lib/seo/types";
 import { Card, ErrorNote, Mini, Notice, Pill, RunButton, UrlLink, col } from "./common";
 
@@ -63,8 +63,7 @@ export function SchemaPanel({
   async function inspect() {
     setBusy("inspect"); setError(null);
     try {
-      const r = await seoFetch<{ inspections: InspectionResult[] }>("/api/seo/inspect", { method: "POST", body: JSON.stringify({}) });
-      onInspections(r.inspections);
+      onInspections(await inspectAll());
     } catch (e) { setError(e instanceof Error ? e.message : "Inspection failed"); }
     finally { setBusy(null); }
   }

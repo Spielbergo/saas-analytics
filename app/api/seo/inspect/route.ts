@@ -35,8 +35,13 @@ export async function POST(request: Request) {
     if (urls.length === 0) {
       return NextResponse.json({ error: site ? "No URLs to inspect yet — run a site audit first (the SEO tab's crawl), then try again." : "No site configured — set SEO_SITE_URL or SEARCH_CONSOLE_SITE_URL in the environment variables." }, { status: 400 });
     }
-    await inspectUrls(urls);
-    return NextResponse.json({ inspections: await getInspectionCache() });
+    // Work in small batches (the page loops over them) so each request finishes inside the host's time limit.
+    const total = Math.min(urls.length, 60);
+    const offset = Math.max(0, Math.min(total, Number(body?.offset) || 0));
+    const limit = Math.max(1, Math.min(10, Number(body?.limit) || 6));
+    const end = Math.min(total, offset + limit);
+    await inspectUrls(urls.slice(offset, end));
+    return NextResponse.json({ inspections: await getInspectionCache(), next: end < total ? end : null, total });
   } catch (err) {
     return errorResponse("/api/seo/inspect", err);
   }

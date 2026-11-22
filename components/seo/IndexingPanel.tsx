@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { DataTable } from "@/components/DataTable";
-import { seoFetch } from "@/lib/seoClient";
+import { inspectAll } from "@/lib/seoClient";
 import type { CrawlResult, InspectionResult } from "@/lib/seo/types";
 import { Card, ErrorNote, Mini, Notice, Pill, RunButton, UrlLink, col } from "./common";
 
@@ -19,16 +19,13 @@ export function IndexingPanel({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
 
   async function run() {
     setBusy(true);
     setError(null);
     try {
-      const r = await seoFetch<{ inspections: InspectionResult[] }>("/api/seo/inspect", {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
-      onChange(r.inspections);
+      onChange(await inspectAll((done, total) => setProgress(`${done} of ${total}`)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Inspection failed");
     } finally {
@@ -49,7 +46,7 @@ export function IndexingPanel({
         subtitle="Asks Google, via the free URL Inspection API, whether each page is actually indexed (up to 60 pages per run; Google allows ~2,000/day). Uses the indexable pages from your last site audit."
         action={
           <RunButton onClick={run} busy={busy} disabled={!configured || !crawl}>
-            {busy ? "Inspecting…" : inspections.length ? "Re-inspect pages" : "Inspect pages"}
+            {busy ? `Inspecting${progress ? ` ${progress}` : "…"}` : inspections.length ? "Re-inspect pages" : "Inspect pages"}
           </RunButton>
         }
       >

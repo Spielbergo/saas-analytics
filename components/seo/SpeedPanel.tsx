@@ -73,6 +73,17 @@ export function SpeedPanel({
         }
       >
         {error && <ErrorNote>{error}</ErrorNote>}
+        {(() => {
+          const reasons = Array.from(new Set(results.filter((r) => r.error).map((r) => r.error as string)));
+          if (!reasons.length) return null;
+          const quota = reasons.some((m) => /quota|429|rate/i.test(m));
+          return (
+            <ErrorNote>
+              {`PageSpeed failed: ${reasons.slice(0, 2).join(" | ")}`}
+              {quota || !hasKey ? " — Google's shared PageSpeed quota is often used up. Add a free PAGESPEED_API_KEY (Google Cloud → enable “PageSpeed Insights API” → create an API key) to your environment variables and redeploy." : ""}
+            </ErrorNote>
+          );
+        })()}
         {results.length === 0 && !busy && <p className="text-sm text-muted">No results yet.</p>}
         {results.length > 0 && (
           <DataTable<PageSpeedResult>
@@ -83,7 +94,7 @@ export function SpeedPanel({
             columns={[
               col<PageSpeedResult>("url", "URL", (r) => r.url, (r) => <UrlLink url={r.url} max={40} />),
               col<PageSpeedResult>("strategy", "Device", (r) => r.strategy),
-              num<PageSpeedResult>("perf", "Performance", (r) => r.performance, (r) => (r.error ? <Pill tone="error">error</Pill> : score(r.performance))),
+              num<PageSpeedResult>("perf", "Performance", (r) => r.performance, (r) => (r.error ? <span title={r.error}><Pill tone="error">error</Pill></span> : score(r.performance))),
               num<PageSpeedResult>("seo", "SEO", (r) => r.seo, (r) => score(r.seo)),
               num<PageSpeedResult>("a11y", "Accessibility", (r) => r.accessibility, (r) => score(r.accessibility)),
               num<PageSpeedResult>("bp", "Best practices", (r) => r.bestPractices, (r) => score(r.bestPractices)),
