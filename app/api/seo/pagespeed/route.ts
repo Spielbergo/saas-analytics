@@ -4,7 +4,7 @@ import { seoSiteUrl } from "@/lib/seo/config";
 import { getPageSpeedCache, runPageSpeed } from "@/lib/seo/pagespeed";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 60; // Vercel Hobby cap; the page sends one URL per request
 
 export async function POST(request: Request) {
   const denied = await requireAdmin(request);
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No valid URLs for this site." }, { status: 400 });
     }
     await runPageSpeed(urls, strategy);
-    return NextResponse.json({ pagespeed: getPageSpeedCache() });
+    return NextResponse.json({ pagespeed: await getPageSpeedCache() });
   } catch (err) {
     return errorResponse("/api/seo/pagespeed", err);
   }

@@ -1,5 +1,5 @@
 import { seoSiteUrl } from "./config";
-import { readCache, writeCache } from "./store";
+import { kvGet, kvSet } from "../adminStore";
 import { recordBacklinks } from "./history";
 import type { BacklinkData, BacklinkSample, BacklinkTarget } from "./types";
 
@@ -14,8 +14,8 @@ export function bingConfigured(): boolean {
   return Boolean(process.env.BING_WEBMASTER_API_KEY);
 }
 
-export function getBacklinkCache(): BacklinkData {
-  const cached = readCache<BacklinkData | null>("backlinks.json", null);
+export async function getBacklinkCache(): Promise<BacklinkData> {
+  const cached = await kvGet<BacklinkData | null>("seo_backlinks", null);
   if (cached) return { ...cached, configured: bingConfigured() };
   return { ...EMPTY_BACKLINKS, configured: bingConfigured() };
 }
@@ -94,7 +94,7 @@ export async function refreshBacklinks(): Promise<BacklinkData> {
         .sort((a, b) => b.links - a.links),
       error: null,
     };
-    writeCache("backlinks.json", data);
+    await kvSet("seo_backlinks", data);
     await recordBacklinks(data).catch(() => {});
     return data;
   } catch (err) {

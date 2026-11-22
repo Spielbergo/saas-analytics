@@ -35,11 +35,14 @@ export function SpeedPanel({
       (u, i, a) => a.indexOf(u) === i
     );
     try {
-      const r = await seoFetch<{ pagespeed: PageSpeedResult[] }>("/api/seo/pagespeed", {
-        method: "POST",
-        body: JSON.stringify({ urls, strategy }),
-      });
-      onChange(r.pagespeed);
+      // One page per request: each takes ~20s and hosted functions are capped at 60s.
+      for (const url of urls) {
+        const r = await seoFetch<{ pagespeed: PageSpeedResult[] }>("/api/seo/pagespeed", {
+          method: "POST",
+          body: JSON.stringify({ urls: [url], strategy }),
+        });
+        onChange(r.pagespeed);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "PageSpeed failed");
     } finally {

@@ -1,11 +1,11 @@
 import "server-only";
 import { google } from "googleapis";
 import { getGoogleAuth, isGoogleConfigured } from "../google/auth";
-import { readCache, writeCache } from "./store";
+import { kvGet, kvSet } from "../adminStore";
 import type { InspectionResult } from "./types";
 
-export function getInspectionCache(): InspectionResult[] {
-  return readCache<InspectionResult[]>("inspection.json", []);
+export async function getInspectionCache(): Promise<InspectionResult[]> {
+  return kvGet<InspectionResult[]>("seo_inspection", []);
 }
 
 /** Google's URL Inspection API — free, ~2,000 inspections/day per property. */
@@ -19,7 +19,7 @@ export async function inspectUrls(urls: string[]): Promise<InspectionResult[]> {
 
   const results: InspectionResult[] = [];
   let idx = 0;
-  const list = urls.slice(0, 60);
+  const list = urls.slice(0, process.env.VERCEL ? 40 : 60); // stay inside Vercel's 60s limit
   const worker = async () => {
     while (idx < list.length) {
       const url = list[idx++];
@@ -64,11 +64,11 @@ export async function inspectUrls(urls: string[]): Promise<InspectionResult[]> {
   };
   await Promise.all(Array.from({ length: 3 }, () => worker()));
 
-  const merged = new Map(getInspectionCache().map((r) => [r.url, r]));
+  const merged = new Map((await getInspectionCache()).map((r) => [r.url, r]));
   for (const r of results) {
     if (r.error && merged.has(r.url)) continue;
     merged.set(r.url, r);
   }
-  writeCache("inspection.json", Array.from(merged.values()));
+  await kvSet("seo_inspection", Array.from(merged.values()));
   return results;
 }

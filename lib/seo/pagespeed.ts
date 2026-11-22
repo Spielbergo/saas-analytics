@@ -1,4 +1,4 @@
-import { readCache, writeCache } from "./store";
+import { kvGet, kvSet } from "../adminStore";
 import { recordPageSpeed } from "./history";
 import type { PageSpeedResult } from "./types";
 
@@ -43,8 +43,8 @@ export function parsePageSpeed(url: string, strategy: "mobile" | "desktop", json
   };
 }
 
-export function getPageSpeedCache(): PageSpeedResult[] {
-  return readCache<PageSpeedResult[]>("pagespeed.json", []);
+export async function getPageSpeedCache(): Promise<PageSpeedResult[]> {
+  return kvGet<PageSpeedResult[]>("seo_pagespeed", []);
 }
 
 export async function runPageSpeed(
@@ -80,14 +80,14 @@ export async function runPageSpeed(
 
   // Merge into the cache: newest result wins per url+strategy. Don't
   // overwrite a good cached result with a failed one.
-  const cache = getPageSpeedCache();
+  const cache = await getPageSpeedCache();
   const keyOf = (r: PageSpeedResult) => `${r.strategy}|${r.url}`;
   const merged = new Map(cache.map((r) => [keyOf(r), r]));
   for (const r of results) {
     if (r.error && merged.has(keyOf(r))) continue;
     merged.set(keyOf(r), r);
   }
-  writeCache("pagespeed.json", Array.from(merged.values()));
+  await kvSet("seo_pagespeed", Array.from(merged.values()));
   await recordPageSpeed(results).catch(() => {});
   return results;
 }

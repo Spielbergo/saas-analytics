@@ -19,9 +19,9 @@ export async function getSeoBundle(): Promise<SeoBundle> {
     crawl,
     history,
     opportunities,
-    inspections: getInspectionCache(),
-    pagespeed: getPageSpeedCache(),
-    backlinks: getBacklinkCache(),
+    inspections: await getInspectionCache(),
+    pagespeed: await getPageSpeedCache(),
+    backlinks: await getBacklinkCache(),
     generatedAt: new Date().toISOString(),
     config: {
       siteUrl: site,
